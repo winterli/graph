@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1. Breadth-First Search (BFS) — Interactive Algorithm Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        slate: {
+                            850: '#151e2e',
+                            900: '#0f172a',
+                            950: '#090d16',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #090d16;
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* Animations */
+        @keyframes pulseRing {
+            0% {
+                transform: scale(0.95);
+                opacity: 0.85;
+            }
+            70% {
+                transform: scale(1.48);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1.48);
+                opacity: 0;
+            }
+        }
+        .animate-pulse-ring {
+            transform-box: fill-box;
+            transform-origin: center;
+            animation: pulseRing 1.6s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.75); opacity: 0; }
+            70% { transform: scale(1.06); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .queue-item-enter {
+            animation: popIn 0.25s ease-out forwards;
+        }
+
+        .node-circle {
+            transition: fill 0.25s ease, stroke 0.25s ease, stroke-width 0.25s ease;
+        }
+        .edge-line {
+            transition: stroke 0.25s ease, stroke-width 0.25s ease, opacity 0.25s ease;
+        }
+        .code-line {
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        /* Explicit non-zero dimensions so SVG never collapses to 0x0 */
+        #canvas-wrapper {
+            min-height: 420px;
+            width: 100%;
+            height: 100%;
+        }
+        #graph-svg {
+            display: block;
+            width: 100%;
+            height: 420px;
+            min-height: 420px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+
+    <!-- Top Navigation & Header -->
+    <header class="border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md sticky top-0 z-30">
+        <div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center font-mono font-bold text-white shadow-lg shadow-cyan-500/20">
+                    1
+                </div>
+                <div>
+                    <div class="flex items-center gap-2.5">
+                        <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white">Breadth-First Search (BFS)</h1>
+                        <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                            Easy
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400 hidden sm:block">Level-by-level traversal • Shortest path in unweighted graphs • FIFO Queue</p>
+                </div>
+            </div>
+
+            <!-- Preset Selector & Complexity Badges -->
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1">
+                    <button data-preset="ripple" class="preset-btn px-3 py-1.5 text-xs font-medium rounded-lg transition-all bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                        Level Ripple
+                    </button>
+                    <button data-preset="tree" class="preset-btn px-3 py-1.5 text-xs font-medium rounded-lg transition-all text-slate-400 hover:text-slate-200 border border-transparent">
+                        Binary Tree
+                    </button>
+                    <button data-preset="cyclic" class="preset-btn px-3 py-1.5 text-xs font-medium rounded-lg transition-all text-slate-400 hover:text-slate-200 border border-transparent">
+                        Cyclic Graph
+                    </button>
+                    <button data-preset="grid" class="preset-btn px-3 py-1.5 text-xs font-medium rounded-lg transition-all text-slate-400 hover:text-slate-200 border border-transparent">
+                        Grid / Maze
+                    </button>
+                </div>
+
+                <div class="hidden xl:flex items-center gap-2 text-xs font-mono">
+                    <span class="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300">
+                        Time: <strong class="text-cyan-400">O(V + E)</strong>
+                    </span>
+                    <span class="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300">
+                        Space: <strong class="text-purple-400">O(V)</strong>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+        <!-- Left Column: Interactive Graph Canvas & Playback Controls (7 cols on lg) -->
+        <section class="lg:col-span-7 flex flex-col gap-4">
+
+            <!-- Step Narration Banner -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl flex items-start gap-3.5">
+                <div id="narration-badge" class="mt-0.5 w-7 h-7 rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 flex items-center justify-center shrink-0 font-mono text-xs font-bold">
+                    0
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-2 mb-1">
+                        <span id="step-phase" class="text-xs font-semibold uppercase tracking-wider text-cyan-400">Initialization</span>
+                        <span id="step-counter" class="text-xs font-mono text-slate-400">Step 0 / 0</span>
+                    </div>
+                    <p id="narration-text" class="text-sm text-slate-200 leading-relaxed">
+                        Click <strong class="text-white">Play</strong> or <strong class="text-white">Step Forward</strong> to begin Breadth-First Search. Click any node on the graph to change the starting node.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Interactive SVG Graph Container -->
+            <div class="relative flex-1 min-h-[460px] bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+                <!-- Top Overlay Hint & Legend -->
+                <div class="px-4 py-2.5 border-b border-slate-800/80 bg-slate-950/60 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div class="flex items-center gap-1.5 text-slate-400">
+                        <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path>
+                        </svg>
+                        <span>Click any node to set <strong class="text-slate-200">Start Node</strong></span>
+                    </div>
+
+                    <!-- Color Legend -->
+                    <div class="flex flex-wrap items-center gap-3 text-[11px] font-medium">
+                        <span class="flex items-center gap-1.5 text-slate-300">
+                            <span class="w-2.5 h-2.5 rounded-full bg-slate-700 border border-slate-400"></span> Unvisited
+                        </span>
+                        <span class="flex items-center gap-1.5 text-amber-300">
+                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Active
+                        </span>
+                        <span class="flex items-center gap-1.5 text-cyan-300">
+                            <span class="w-2.5 h-2.5 rounded-full bg-cyan-500"></span> Lvl 0
+                        </span>
+                        <span class="flex items-center gap-1.5 text-blue-300">
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Lvl 1
+                        </span>
+                        <span class="flex items-center gap-1.5 text-indigo-300">
+                            <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span> Lvl 2
+                        </span>
+                        <span class="flex items-center gap-1.5 text-purple-300">
+                            <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span> Lvl 3+
+                        </span>
+                    </div>
+                </div>
+
+                <!-- SVG Canvas -->
+                <div id="canvas-wrapper" class="relative flex-1 w-full flex items-center justify-center bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:20px_20px]">
+                    <svg id="graph-svg" viewBox="0 0 760 440" preserveAspectRatio="xMidYMid meet" class="w-full h-[420px] sm:h-[450px] select-none">
+                        <defs>
+                            <filter id="glow-cyan" x="-30%" y="-30%" width="160%" height="160%">
+                                <feGaussianBlur stdDeviation="4" result="blur" />
+                                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                            </filter>
+                            <filter id="glow-amber" x="-30%" y="-30%" width="160%" height="160%">
+                                <feGaussianBlur stdDeviation="5" result="blur" />
+                                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                            </filter>
+                        </defs>
+                        <!-- Concentric Wave Ripples Group (for Level Ripple mode) -->
+                        <g id="ripples-layer"></g>
+                        <!-- Edges Group -->
+                        <g id="edges-layer"></g>
+                        <!-- Nodes Group -->
+                        <g id="nodes-layer"></g>
+                    </svg>
+                </div>
+
+                <!-- Playback Controls Bar -->
+                <div class="p-3.5 border-t border-slate-800 bg-slate-950/90 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-2">
+                        <button id="btn-reset" title="Reset (R)" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 transition-all active:scale-95">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                        </button>
+
+                        <button id="btn-prev" title="Step Backward (Left Arrow)" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 transition-all active:scale-95 disabled:opacity-40 disabled:pointer-events-none">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                            </svg>
+                        </button>
+
+                        <button id="btn-play" title="Play / Pause (Space)" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-sm shadow-lg shadow-cyan-500/25 flex items-center gap-2 transition-all active:scale-95">
+                            <svg id="icon-play" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                            <svg id="icon-pause" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                            </svg>
+                            <span id="play-label">Play</span>
+                        </button>
+
+                        <button id="btn-next" title="Step Forward (Right Arrow)" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 transition-all active:scale-95 disabled:opacity-40 disabled:pointer-events-none">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Speed Slider -->
+                    <div class="flex items-center gap-3">
+                        <label for="speed-slider" class="text-xs font-medium text-slate-400">Speed</label>
+                        <input id="speed-slider" type="range" min="1" max="5" value="3" class="w-24 sm:w-28 accent-cyan-500 cursor-pointer">
+                        <span id="speed-label" class="text-xs font-mono text-cyan-400 w-9">1.0x</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Live Data Structures & Synchronized Java Code (5 cols on lg) -->
+        <section class="lg:col-span-5 flex flex-col gap-4">
+
+            <!-- FIFO Queue Visualization Card -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                        <h2 class="text-sm font-bold text-white tracking-wide">FIFO Queue <span class="text-slate-400 font-normal font-mono text-xs">(ArrayDeque&lt;String&gt;)</span></h2>
+                    </div>
+                    <span id="queue-size" class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">Size: 0</span>
+                </div>
+
+                <div class="relative bg-slate-950/90 border border-slate-800/90 rounded-xl p-3 min-h-[76px] flex items-center gap-2 overflow-x-auto">
+                    <div class="flex flex-col items-center justify-center px-2 py-1 rounded bg-amber-500/10 border border-amber-500/30 text-[10px] font-mono text-amber-300 shrink-0">
+                        <span>FRONT</span>
+                        <span class="text-[9px] text-amber-400/70">poll()</span>
+                    </div>
+
+                    <div id="queue-container" class="flex-1 flex items-center gap-2 min-h-[44px] px-1">
+                        <span class="text-xs font-mono text-slate-500 italic">Queue is empty</span>
+                    </div>
+
+                    <div class="flex flex-col items-center justify-center px-2 py-1 rounded bg-emerald-500/10 border border-emerald-500/30 text-[10px] font-mono text-emerald-300 shrink-0">
+                        <span>REAR</span>
+                        <span class="text-[9px] text-emerald-400/70">offer()</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visited Order & Level Grouping Card -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Visited Set / Traversal Order -->
+                <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col">
+                    <div class="flex items-center justify-between mb-2.5">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Visited Order</h3>
+                        <span id="visited-count" class="text-xs font-mono text-cyan-400">0 / 0</span>
+                    </div>
+                    <div id="visited-container" class="flex flex-wrap gap-1.5 min-h-[38px] items-center content-start">
+                        <span class="text-xs font-mono text-slate-500 italic">None yet</span>
+                    </div>
+                </div>
+
+                <!-- Levels / Distance Map -->
+                <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col">
+                    <div class="flex items-center justify-between mb-2.5">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Depth Levels</h3>
+                        <span class="text-[11px] font-mono text-slate-400">Shortest Dist</span>
+                    </div>
+                    <div id="levels-container" class="flex flex-col gap-1.5 max-h-[115px] overflow-y-auto pr-1 text-xs font-mono">
+                        <span class="text-slate-500 italic">Start traversal to see levels</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Synchronized Java Code Panel -->
+            <div class="flex-1 bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-xl flex flex-col">
+                <div class="px-4 py-2.5 border-b border-slate-800 bg-slate-950/70 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="flex gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-rose-500/80"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500/80"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></span>
+                        </div>
+                        <span class="ml-2 text-xs font-mono font-semibold text-slate-300">BFS.java</span>
+                    </div>
+                    <span class="text-[11px] font-mono text-slate-400">Java Interview Template</span>
+                </div>
+
+                <div id="code-container" class="p-3 font-mono text-xs sm:text-[13px] leading-relaxed overflow-x-auto flex-1 bg-[#0b101b]">
+                    <!-- Code lines injected by JS -->
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <script>
+        // ==========================================
+        // 1. GRAPH PRESETS & CONFIGURATION
+        // ==========================================
+        const PRESETS = {
+            ripple: {
+                name: 'Level Ripple',
+                defaultStart: 'A',
+                showRipples: true,
+                nodes: [
+                    { id: 'A', x: 110, y: 220 },
+                    { id: 'B', x: 260, y: 120 },
+                    { id: 'C', x: 260, y: 320 },
+                    { id: 'D', x: 430, y: 70 },
+                    { id: 'E', x: 430, y: 175 },
+                    { id: 'F', x: 430, y: 265 },
+                    { id: 'G', x: 430, y: 370 },
+                    { id: 'H', x: 610, y: 110 },
+                    { id: 'I', x: 610, y: 220 },
+                    { id: 'J', x: 610, y: 330 },
+                ],
+                edges: [
+                    ['A', 'B'], ['A', 'C'],
+                    ['B', 'D'], ['B', 'E'],
+                    ['C', 'F'], ['C', 'G'],
+                    ['D', 'H'], ['E', 'H'], ['E', 'I'],
+                    ['F', 'I'], ['G', 'J']
+                ]
+            },
+            tree: {
+                name: 'Binary Tree',
+                defaultStart: '1',
+                showRipples: false,
+                nodes: [
+                    { id: '1', x: 380, y: 55 },
+                    { id: '2', x: 210, y: 145 },
+                    { id: '3', x: 550, y: 145 },
+                    { id: '4', x: 125, y: 250 },
+                    { id: '5', x: 295, y: 250 },
+                    { id: '6', x: 465, y: 250 },
+                    { id: '7', x: 635, y: 250 },
+                    { id: '8', x: 80,  y: 360 },
+                    { id: '9', x: 170, y: 360 },
+                    { id: '10', x: 255, y: 360 },
+                    { id: '11', x: 590, y: 360 },
+                    { id: '12', x: 680, y: 360 },
+                ],
+                edges: [
+                    ['1', '2'], ['1', '3'],
+                    ['2', '4'], ['2', '5'],
+                    ['3', '6'], ['3', '7'],
+                    ['4', '8'], ['4', '9'],
+                    ['5', '10'],
+                    ['7', '11'], ['7', '12']
+                ]
+            },
+            cyclic: {
+                name: 'Cyclic Graph',
+                defaultStart: 'S',
+                showRipples: false,
+                nodes: [
+                    { id: 'S', x: 130, y: 220 },
+                    { id: 'A', x: 270, y: 95 },
+                    { id: 'B', x: 270, y: 345 },
+                    { id: 'C', x: 430, y: 220 },
+                    { id: 'D', x: 560, y: 95 },
+                    { id: 'E', x: 560, y: 345 },
+                    { id: 'T', x: 675, y: 220 },
+                ],
+                edges: [
+                    ['S', 'A'], ['S', 'B'],
+                    ['A', 'B'], ['A', 'C'], ['A', 'D'],
+                    ['B', 'C'], ['B', 'E'],
+                    ['C', 'D'], ['C', 'E'],
+                    ['D', 'T'], ['E', 'T']
+                ]
+            },
+            grid: {
+                name: 'Grid / Maze',
+                defaultStart: '0,0',
+                showRipples: false,
+                nodes: [
+                    { id: '0,0', x: 160, y: 80 },  { id: '0,1', x: 305, y: 80 },  { id: '0,2', x: 450, y: 80 },  { id: '0,3', x: 595, y: 80 },
+                    { id: '1,0', x: 160, y: 175 }, { id: '1,1', x: 305, y: 175 }, /* wall at 1,2 */              { id: '1,3', x: 595, y: 175 },
+                    { id: '2,0', x: 160, y: 270 }, /* wall at 2,1 */              { id: '2,2', x: 450, y: 270 }, { id: '2,3', x: 595, y: 270 },
+                    { id: '3,0', x: 160, y: 365 }, { id: '3,1', x: 305, y: 365 }, { id: '3,2', x: 450, y: 365 }, { id: '3,3', x: 595, y: 365 },
+                ],
+                edges: [
+                    ['0,0', '0,1'], ['0,1', '0,2'], ['0,2', '0,3'],
+                    ['0,0', '1,0'], ['0,1', '1,1'], ['0,3', '1,3'],
+                    ['1,0', '1,1'],
+                    ['1,0', '2,0'], ['1,3', '2,3'],
+                    ['2,2', '2,3'],
+                    ['2,0', '3,0'], ['2,2', '3,2'], ['2,3', '3,3'],
+                    ['3,0', '3,1'], ['3,1', '3,2'], ['3,2', '3,3']
+                ]
+            }
+        };
+
+        const JAVA_CODE = [
+            { line: 1,  text: "public List<String> bfs(Map<String, List<String>> graph, String start) {" },
+            { line: 2,  text: "    Queue<String> queue = new ArrayDeque<>();" },
+            { line: 3,  text: "    Set<String> visited = new HashSet<>();" },
+            { line: 4,  text: "    List<String> order = new ArrayList<>();" },
+            { line: 5,  text: "" },
+            { line: 6,  text: "    queue.offer(start);" },
+            { line: 7,  text: "    visited.add(start);" },
+            { line: 8,  text: "" },
+            { line: 9,  text: "    while (!queue.isEmpty()) {" },
+            { line: 10, text: "        String node = queue.poll();" },
+            { line: 11, text: "        order.add(node);" },
+            { line: 12, text: "" },
+            { line: 13, text: "        for (String neighbor : graph.getOrDefault(node, List.of())) {" },
+            { line: 14, text: "            if (!visited.contains(neighbor)) {" },
+            { line: 15, text: "                visited.add(neighbor);" },
+            { line: 16, text: "                queue.offer(neighbor);" },
+            { line: 17, text: "            }" },
+            { line: 18, text: "        }" },
+            { line: 19, text: "    }" },
+            { line: 20, text: "    return order;" },
+            { line: 21, text: "}" }
+        ];
+
+        // Level Color Palette
+        const LEVEL_COLORS = [
+            { fill: '#0891b2', stroke: '#22d3ee', badge: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },       // Level 0
+            { fill: '#2563eb', stroke: '#60a5fa', badge: 'bg-blue-500/20 text-blue-300 border-blue-500/40' },       // Level 1
+            { fill: '#4f46e5', stroke: '#818cf8', badge: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' }, // Level 2
+            { fill: '#7c3aed', stroke: '#a78bfa', badge: 'bg-purple-500/20 text-purple-300 border-purple-500/40' }, // Level 3
+            { fill: '#c026d3', stroke: '#e879f9', badge: 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/40' },// Level 4
+            { fill: '#db2777', stroke: '#f472b6', badge: 'bg-pink-500/20 text-pink-300 border-pink-500/40' }        // Level 5+
+        ];
+
+        function getLevelColor(lvl) {
+            return LEVEL_COLORS[Math.min(lvl, LEVEL_COLORS.length - 1)];
+        }
+
+        // ==========================================
+        // 2. APPLICATION STATE
+        // ==========================================
+        let currentPresetKey = 'ripple';
+        let startNode = PRESETS.ripple.defaultStart;
+        let steps = [];
+        let currentStepIdx = 0;
+        let isPlaying = false;
+        let playTimer = null;
+        let speedMultiplier = 1.0;
+
+        // ==========================================
+        // 3. BFS STEP TRACE GENERATOR
+        // ==========================================
+        function buildAdjacencyList(preset) {
+            const adj = {};
+            preset.nodes.forEach(n => adj[n.id] = []);
+            preset.edges.forEach(([u, v]) => {
+                adj[u].push(v);
+                adj[v].push(u);
+            });
+            return adj;
+        }
+
+        function generateBFSSteps(presetKey, start) {
+            const preset = PRESETS[presetKey];
+            const adj = buildAdjacencyList(preset);
+            const trace = [];
+
+            let queue = [];
+            let visitedSet = new Set();
+            let visitedOrder = [];
+            let levels = {};
+            let treeEdges = new Set();
+
+            const cloneState = (overrides) => ({
+                queue: [...queue],
+                visited: [...visitedOrder],
+                visitedSet: new Set(visitedSet),
+                levels: { ...levels },
+                treeEdges: new Set(treeEdges),
+                currentNode: null,
+                inspectingEdge: null,
+                inspectingNeighbor: null,
+                neighborStatus: null,
+                activeLine: 1,
+                phase: 'Ready',
+                narration: '',
+                ...overrides
+            });
+
+            // Step 0: Initial state before starting
+            trace.push(cloneState({
+                activeLine: 1,
+                phase: 'Ready',
+                narration: `Ready to run <code>bfs(graph, "${start}")</code>. Click <strong>Play</strong> or <strong>Step Forward</strong> to begin.`
+            }));
+
+            // Step 1: Initialize queue and visited set
+            queue.push(start);
+            visitedSet.add(start);
+            levels[start] = 0;
+
+            trace.push(cloneState({
+                activeLine: 7,
+                phase: 'Initialize',
+                narration: `Call <code>queue.offer("${start}")</code> and <code>visited.add("${start}")</code> at Level 0.`
+            }));
+
+            // Main BFS Loop
+            while (queue.length > 0) {
+                trace.push(cloneState({
+                    activeLine: 9,
+                    phase: 'Loop Check',
+                    narration: `<code>!queue.isEmpty()</code> is true (<code>[${queue.join(', ')}]</code>). Continue exploring.`
+                }));
+
+                const curr = queue.shift();
+                visitedOrder.push(curr);
+
+                trace.push(cloneState({
+                    currentNode: curr,
+                    activeLine: 11,
+                    phase: 'Dequeue & Record',
+                    narration: `Call <code>queue.poll()</code> to retrieve <strong>${curr}</strong> (Level ${levels[curr]}) and append it via <code>order.add("${curr}")</code>.`
+                }));
+
+                const neighbors = adj[curr] || [];
+                for (const neighbor of neighbors) {
+                    const edgeKey = [curr, neighbor].sort().join('--');
+
+                    trace.push(cloneState({
+                        currentNode: curr,
+                        inspectingEdge: edgeKey,
+                        inspectingNeighbor: neighbor,
+                        activeLine: 13,
+                        phase: 'Inspect Neighbor',
+                        narration: `Iterating <code>graph.getOrDefault("${curr}", ...)</code>: checking neighbor <strong>${neighbor}</strong>.`
+                    }));
+
+                    if (!visitedSet.has(neighbor)) {
+                        visitedSet.add(neighbor);
+                        levels[neighbor] = levels[curr] + 1;
+                        queue.push(neighbor);
+                        treeEdges.add(edgeKey);
+
+                        trace.push(cloneState({
+                            currentNode: curr,
+                            inspectingEdge: edgeKey,
+                            inspectingNeighbor: neighbor,
+                            neighborStatus: 'new',
+                            activeLine: 16,
+                            phase: 'Discover & Offer',
+                            narration: `<code>!visited.contains("${neighbor}")</code> is true! Call <code>visited.add("${neighbor}")</code> and <code>queue.offer("${neighbor}")</code> (Level ${levels[neighbor]}).`
+                        }));
+                    } else {
+                        trace.push(cloneState({
+                            currentNode: curr,
+                            inspectingEdge: edgeKey,
+                            inspectingNeighbor: neighbor,
+                            neighborStatus: 'already_visited',
+                            activeLine: 14,
+                            phase: 'Already Visited',
+                            narration: `<code>visited.contains("${neighbor}")</code> is true (Level ${levels[neighbor]}). Skip to prevent cycles and redundant work.`
+                        }));
+                    }
+                }
+            }
+
+            // Completion Step
+            trace.push(cloneState({
+                activeLine: 20,
+                phase: 'Complete',
+                narration: `<code>queue.isEmpty()</code> is true! Returned <code>order</code> with <strong>${visitedOrder.length}</strong> reachable nodes: <code>[${visitedOrder.join(' → ')}]</code>.`
+            }));
+
+            return trace;
+        }
+
+        // ==========================================
+        // 4. DOM RENDERING FUNCTIONS
+        // ==========================================
+        function renderCodePanel() {
+            const container = document.getElementById('code-container');
+            if (!container) return;
+            container.innerHTML = JAVA_CODE.map(item => `
+                <div id="code-line-${item.line}" class="code-line flex items-center px-2.5 py-0.5 rounded border-l-2 border-transparent">
+                    <span class="w-7 text-slate-600 select-none text-right pr-3 text-xs">${item.line}</span>
+                    <pre class="text-slate-300 whitespace-pre">${escapeHtml(item.text) || ' '}</pre>
+                </div>
+            `).join('');
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        function highlightCodeLine(lineNum) {
+            document.querySelectorAll('.code-line').forEach(el => {
+                el.classList.remove('bg-cyan-500/15', 'border-cyan-400', 'text-white');
+                const pre = el.querySelector('pre');
+                if (pre) pre.classList.remove('text-cyan-200', 'font-semibold');
+            });
+            const activeEl = document.getElementById(`code-line-${lineNum}`);
+            if (activeEl) {
+                activeEl.classList.add('bg-cyan-500/15', 'border-cyan-400');
+                const pre = activeEl.querySelector('pre');
+                if (pre) pre.classList.add('text-cyan-200', 'font-semibold');
+            }
+        }
+
+        function renderGraphSVG(step) {
+            const preset = PRESETS[currentPresetKey];
+            const nodeMap = {};
+            preset.nodes.forEach(n => nodeMap[n.id] = n);
+
+            // 1. Concentric Ripples Layer (for Level Ripple preset)
+            const ripplesLayer = document.getElementById('ripples-layer');
+            if (ripplesLayer) {
+                if (preset.showRipples && startNode === 'A') {
+                    const startPos = nodeMap['A'];
+                    const maxDiscoveredLevel = Math.max(0, ...Object.values(step.levels));
+                    let ripplesHtml = '';
+                    const radii = [165, 330, 510];
+                    radii.forEach((r, idx) => {
+                        const active = maxDiscoveredLevel >= idx + 1;
+                        ripplesHtml += `
+                            <circle cx="${startPos.x}" cy="${startPos.y}" r="${r}"
+                                fill="none"
+                                stroke="${active ? '#22d3ee' : '#334155'}"
+                                stroke-width="${active ? '1.8' : '1.2'}"
+                                stroke-dasharray="6 6"
+                                opacity="${active ? '0.45' : '0.45'}" />
+                            <text x="${startPos.x + r - 38}" y="26" fill="${active ? '#38bdf8' : '#64748b'}"
+                                font-size="11" font-family="JetBrains Mono" font-weight="600">
+                                Level ${idx + 1}
+                            </text>
+                        `;
+                    });
+                    ripplesLayer.innerHTML = ripplesHtml;
+                } else {
+                    ripplesLayer.innerHTML = '';
+                }
+            }
+
+            // 2. Edges Layer
+            const edgesLayer = document.getElementById('edges-layer');
+            if (edgesLayer) {
+                edgesLayer.innerHTML = preset.edges.map(([u, v]) => {
+                    const n1 = nodeMap[u];
+                    const n2 = nodeMap[v];
+                    if (!n1 || !n2) return '';
+                    const edgeKey = [u, v].sort().join('--');
+
+                    let stroke = '#475569';
+                    let strokeWidth = 2.5;
+                    let opacity = 0.85;
+                    let dashArray = '';
+
+                    if (step.inspectingEdge === edgeKey) {
+                        if (step.neighborStatus === 'already_visited') {
+                            stroke = '#f43f5e';
+                            strokeWidth = 3.5;
+                            dashArray = '5 4';
+                        } else {
+                            stroke = '#f59e0b';
+                            strokeWidth = 4;
+                        }
+                        opacity = 1;
+                    } else if (step.treeEdges.has(edgeKey)) {
+                        stroke = '#38bdf8';
+                        strokeWidth = 3.5;
+                        opacity = 0.95;
+                    }
+
+                    return `
+                        <line x1="${n1.x}" y1="${n1.y}" x2="${n2.x}" y2="${n2.y}"
+                            class="edge-line"
+                            stroke="${stroke}"
+                            stroke-width="${strokeWidth}"
+                            stroke-dasharray="${dashArray}"
+                            opacity="${opacity}" />
+                    `;
+                }).join('');
+            }
+
+            // 3. Nodes Layer
+            const nodesLayer = document.getElementById('nodes-layer');
+            if (nodesLayer) {
+                nodesLayer.innerHTML = preset.nodes.map(node => {
+                    const isVisited = step.visitedSet.has(node.id);
+                    const isCurrent = step.currentNode === node.id;
+                    const isInspecting = step.inspectingNeighbor === node.id;
+                    const level = step.levels[node.id];
+                    const isStart = node.id === startNode;
+
+                    let fill = '#1e293b';
+                    let stroke = '#64748b';
+                    let strokeWidth = 2.8;
+                    let radius = 22;
+                    let filter = '';
+                    let pulseRing = '';
+
+                    if (isVisited && level !== undefined) {
+                        const colors = getLevelColor(level);
+                        fill = colors.fill;
+                        stroke = colors.stroke;
+                    }
+
+                    if (isCurrent) {
+                        stroke = '#fbbf24';
+                        strokeWidth = 4;
+                        radius = 25;
+                        filter = 'url(#glow-amber)';
+                        pulseRing = `<circle cx="${node.x}" cy="${node.y}" r="28" fill="none" stroke="#fbbf24" stroke-width="2" class="animate-pulse-ring" />`;
+                    } else if (isInspecting) {
+                        stroke = step.neighborStatus === 'already_visited' ? '#fb7185' : '#34d399';
+                        strokeWidth = 4;
+                        radius = 24;
+                    }
+
+                    const levelBadge = (isVisited && level !== undefined) ? `
+                        <g transform="translate(${node.x + 15}, ${node.y - 16})">
+                            <rect x="-11" y="-9" width="22" height="16" rx="5" fill="#090d16" stroke="${stroke}" stroke-width="1.2" />
+                            <text x="0" y="2.5" text-anchor="middle" fill="#e2e8f0" font-size="9.5" font-family="JetBrains Mono" font-weight="700">
+                                L${level}
+                            </text>
+                        </g>
+                    ` : '';
+
+                    const startTag = isStart ? `
+                        <text x="${node.x}" y="${node.y + 37}" text-anchor="middle" fill="#22d3ee" font-size="10" font-family="JetBrains Mono" font-weight="700">
+                            START
+                        </text>
+                    ` : '';
+
+                    return `
+                        <g class="cursor-pointer" onclick="handleNodeClick('${node.id}')">
+                            ${pulseRing}
+                            <circle cx="${node.x}" cy="${node.y}" r="${radius}"
+                                class="node-circle"
+                                fill="${fill}"
+                                stroke="${stroke}"
+                                stroke-width="${strokeWidth}"
+                                filter="${filter}" />
+                            <text x="${node.x}" y="${node.y + 4.5}"
+                                text-anchor="middle"
+                                fill="#ffffff"
+                                font-size="${node.id.length > 2 ? '11' : '13'}"
+                                font-family="JetBrains Mono"
+                                font-weight="700">
+                                ${node.id}
+                            </text>
+                            ${levelBadge}
+                            ${startTag}
+                        </g>
+                    `;
+                }).join('');
+            }
+        }
+
+        function renderDataStructures(step) {
+            // 1. FIFO Queue
+            const queueContainer = document.getElementById('queue-container');
+            const queueSize = document.getElementById('queue-size');
+            if (queueSize) queueSize.textContent = `Size: ${step.queue.length}`;
+
+            if (queueContainer) {
+                if (step.queue.length === 0) {
+                    queueContainer.innerHTML = `<span class="text-xs font-mono text-slate-500 italic">Queue is empty</span>`;
+                } else {
+                    queueContainer.innerHTML = step.queue.map((nodeId, idx) => {
+                        const lvl = step.levels[nodeId] ?? 0;
+                        const colors = getLevelColor(lvl);
+                        const isFront = idx === 0;
+                        return `
+                            <div class="queue-item-enter relative flex flex-col items-center justify-center px-3 py-1.5 rounded-lg border ${colors.badge} ${isFront ? 'ring-2 ring-amber-400/70' : ''} shrink-0">
+                                <span class="font-mono font-bold text-sm text-white">${nodeId}</span>
+                                <span class="text-[10px] font-mono opacity-80">Lvl ${lvl}</span>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+
+            // 2. Visited Order
+            const visitedContainer = document.getElementById('visited-container');
+            const visitedCount = document.getElementById('visited-count');
+            const totalNodes = PRESETS[currentPresetKey].nodes.length;
+            if (visitedCount) visitedCount.textContent = `${step.visited.length} / ${totalNodes}`;
+
+            if (visitedContainer) {
+                if (step.visited.length === 0) {
+                    visitedContainer.innerHTML = `<span class="text-xs font-mono text-slate-500 italic">None yet</span>`;
+                } else {
+                    visitedContainer.innerHTML = step.visited.map((nodeId) => {
+                        const lvl = step.levels[nodeId] ?? 0;
+                        const colors = getLevelColor(lvl);
+                        return `
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-mono font-semibold border ${colors.badge}">
+                                ${nodeId}
+                            </span>
+                        `;
+                    }).join('');
+                }
+            }
+
+            // 3. Depth Levels Grouping
+            const levelsContainer = document.getElementById('levels-container');
+            if (levelsContainer) {
+                const groupedByLevel = {};
+                Object.entries(step.levels).forEach(([nodeId, lvl]) => {
+                    if (!groupedByLevel[lvl]) groupedByLevel[lvl] = [];
+                    groupedByLevel[lvl].push(nodeId);
+                });
+
+                const levelKeys = Object.keys(groupedByLevel).sort((a, b) => Number(a) - Number(b));
+                if (levelKeys.length === 0) {
+                    levelsContainer.innerHTML = `<span class="text-slate-500 italic">Start traversal to see levels</span>`;
+                } else {
+                    levelsContainer.innerHTML = levelKeys.map(lvl => {
+                        const colors = getLevelColor(Number(lvl));
+                        return `
+                            <div class="flex items-center justify-between bg-slate-950/70 px-2.5 py-1 rounded-lg border border-slate-800/80">
+                                <span class="px-1.5 py-0.2 rounded text-[11px] font-semibold border ${colors.badge}">Lvl ${lvl}</span>
+                                <span class="text-slate-200 font-semibold">[${groupedByLevel[lvl].join(', ')}]</span>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+        }
+
+        function updateUI() {
+            const step = steps[currentStepIdx];
+            if (!step) return;
+
+            document.getElementById('narration-badge').textContent = currentStepIdx;
+            document.getElementById('step-phase').textContent = step.phase;
+            document.getElementById('step-counter').textContent = `Step ${currentStepIdx} / ${steps.length - 1}`;
+            document.getElementById('narration-text').innerHTML = step.narration;
+
+            document.getElementById('btn-prev').disabled = currentStepIdx === 0;
+            document.getElementById('btn-next').disabled = currentStepIdx === steps.length - 1;
+
+            renderGraphSVG(step);
+            renderDataStructures(step);
+            highlightCodeLine(step.activeLine);
+        }
+
+        // ==========================================
+        // 5. PLAYBACK & INTERACTION HANDLERS
+        // ==========================================
+        function stopPlayback() {
+            isPlaying = false;
+            clearInterval(playTimer);
+            playTimer = null;
+            document.getElementById('icon-play').classList.remove('hidden');
+            document.getElementById('icon-pause').classList.add('hidden');
+            document.getElementById('play-label').textContent = 'Play';
+        }
+
+        function startPlayback() {
+            if (currentStepIdx >= steps.length - 1) {
+                currentStepIdx = 0;
+            }
+            isPlaying = true;
+            document.getElementById('icon-play').classList.add('hidden');
+            document.getElementById('icon-pause').classList.remove('hidden');
+            document.getElementById('play-label').textContent = 'Pause';
+
+            const intervalMs = Math.round(950 / speedMultiplier);
+            playTimer = setInterval(() => {
+                if (currentStepIdx < steps.length - 1) {
+                    currentStepIdx++;
+                    updateUI();
+                } else {
+                    stopPlayback();
+                }
+            }, intervalMs);
+        }
+
+        function togglePlay() {
+            if (isPlaying) {
+                stopPlayback();
+            } else {
+                startPlayback();
+            }
+        }
+
+        function stepForward() {
+            stopPlayback();
+            if (currentStepIdx < steps.length - 1) {
+                currentStepIdx++;
+                updateUI();
+            }
+        }
+
+        function stepBackward() {
+            stopPlayback();
+            if (currentStepIdx > 0) {
+                currentStepIdx--;
+                updateUI();
+            }
+        }
+
+        function resetSimulation() {
+            stopPlayback();
+            steps = generateBFSSteps(currentPresetKey, startNode);
+            currentStepIdx = 0;
+            updateUI();
+        }
+
+        window.handleNodeClick = function(nodeId) {
+            startNode = nodeId;
+            resetSimulation();
+        };
+
+        function selectPreset(presetKey) {
+            currentPresetKey = presetKey;
+            startNode = PRESETS[presetKey].defaultStart;
+
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                if (btn.dataset.preset === presetKey) {
+                    btn.className = 'preset-btn px-3 py-1.5 text-xs font-medium rounded-lg transition-all bg-cyan-500/20 text-cyan-300 border border-cyan-500/40';
+                } else {
+                    btn.className = 'preset-btn px-3 py-1.5 text-xs font-medium rounded-lg transition-all text-slate-400 hover:text-slate-200 border border-transparent';
+                }
+            });
+
+            resetSimulation();
+        }
+
+        // ==========================================
+        // 6. EVENT LISTENERS & RELIABLE INITIALIZATION
+        // ==========================================
+        document.getElementById('btn-play').addEventListener('click', togglePlay);
+        document.getElementById('btn-next').addEventListener('click', stepForward);
+        document.getElementById('btn-prev').addEventListener('click', stepBackward);
+        document.getElementById('btn-reset').addEventListener('click', resetSimulation);
+
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => selectPreset(btn.dataset.preset));
+        });
+
+        const speedSlider = document.getElementById('speed-slider');
+        const speedLabel = document.getElementById('speed-label');
+        const speedMap = { 1: 0.5, 2: 0.75, 3: 1.0, 4: 1.5, 5: 2.5 };
+
+        speedSlider.addEventListener('input', (e) => {
+            speedMultiplier = speedMap[e.target.value] || 1.0;
+            speedLabel.textContent = `${speedMultiplier.toFixed(1)}x`;
+            if (isPlaying) {
+                stopPlayback();
+                startPlayback();
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                togglePlay();
+            } else if (e.code === 'ArrowRight') {
+                stepForward();
+            } else if (e.code === 'ArrowLeft') {
+                stepBackward();
+            } else if (e.code === 'KeyR') {
+                resetSimulation();
+            }
+        });
+
+        // Immediate & resilient initialization across DOMContentLoaded, requestAnimationFrame, ResizeObserver, and window.onload
+        let initialized = false;
+        function initApp() {
+            if (!initialized) {
+                initialized = true;
+                renderCodePanel();
+                resetSimulation();
+            } else if (steps[currentStepIdx]) {
+                updateUI();
+            }
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => requestAnimationFrame(initApp));
+        } else {
+            requestAnimationFrame(initApp);
+        }
+
+        window.addEventListener('load', initApp);
+
+        const wrapper = document.getElementById('canvas-wrapper');
+        if (wrapper && typeof ResizeObserver !== 'undefined') {
+            const ro = new ResizeObserver(() => {
+                if (steps.length > 0 && steps[currentStepIdx]) {
+                    renderGraphSVG(steps[currentStepIdx]);
+                }
+            });
+            ro.observe(wrapper);
+        }
+    </script>
+</body>
+</html>
