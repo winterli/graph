@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2. Depth-First Search (DFS) — Interactive Algorithm Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        slate: {
+                            850: '#151e2e',
+                            900: '#0f172a',
+                            950: '#090d16',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #090d16;
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        @keyframes pulseRing {
+            0% { transform: scale(0.95); opacity: 0.85; }
+            70% { transform: scale(1.48); opacity: 0; }
+            100% { transform: scale(1.48); opacity: 0; }
+        }
+        .animate-pulse-ring {
+            transform-box: fill-box;
+            transform-origin: center;
+            animation: pulseRing 1.5s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+        }
+
+        @keyframes stackPush {
+            0% { transform: translateY(-10px) scale(0.92); opacity: 0; }
+            100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        .stack-item-enter {
+            animation: stackPush 0.25s ease-out forwards;
+        }
+
+        @keyframes dashFlow {
+            to { stroke-dashoffset: -20; }
+        }
+        .animate-dash-flow {
+            animation: dashFlow 0.8s linear infinite;
+        }
+
+        .node-circle {
+            transition: fill 0.25s ease, stroke 0.25s ease, stroke-width 0.25s ease, r 0.2s ease;
+        }
+        .edge-line {
+            transition: stroke 0.25s ease, stroke-width 0.25s ease, opacity 0.25s ease;
+        }
+        .code-line {
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans antialiased selection:bg-rose-500/30 selection:text-rose-200">
+
+    <!-- Top Navigation & Header -->
+    <header class="border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md sticky top-0 z-30">
+        <div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-rose-500 to-purple-600 flex items-center justify-center font-mono font-bold text-white shadow-lg shadow-rose-500/20">
+                    2
+                </div>
+                <div>
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                        <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white">Depth-First Search (DFS)</h1>
+                        <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                            Easy
+                        </span>
+                        <span class="px-2 py-0.5 text-[11px] font-mono rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                            Priority #2
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400 hidden sm:block">Deep branch exploration • Backtracking on dead ends • LIFO Stack / Recursion</p>
+                </div>
+            </div>
+
+            <!-- Mode Toggle & Preset Selector -->
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Iterative vs Recursive Toggle -->
+                <div class="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1" role="group" aria-label="DFS Implementation Mode">
+                    <button id="mode-iterative" class="mode-btn px-3 py-1.5 text-xs font-semibold rounded-lg transition-all bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                        Iterative (Stack)
+                    </button>
+                    <button id="mode-recursive" class="mode-btn px-3 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-400 hover:text-slate-200 border border-transparent">
+                        Recursive (Call Stack)
+                    </button>
+                </div>
+
+                <!-- Graph Presets -->
+                <div class="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1 overflow-x-auto max-w-full">
+                    <button data-preset="tree" class="preset-btn px-3 py-1.5 text-xs font-medium rounded-lg transition-all bg-purple-500/20 text-purple-300 border border-purple-500/40 whitespace-nowrap">
+                        Branching Tree
+                    </button>
+                    <button data-preset="cyclic" class="preset-btn px-3 py-1.5 text-xs font-medium rounded-lg transition-all text-slate-400 hover:text-slate-200 border border-transparent whitespace-nowrap">
+                        Cyclic Graph
+                    </button>
+                    <button data-preset="maze" class="preset-btn px-3 py-1.5 text-xs font-medium rounded-lg transition-all text-slate-400 hover:text-slate-200 border border-transparent whitespace-nowrap">
+                        Maze / Grid Path
+                    </button>
+                    <button data-preset="diamond" class="preset-btn px-3 py-1.5 text-xs font-medium rounded-lg transition-all text-slate-400 hover:text-slate-200 border border-transparent whitespace-nowrap">
+                        Diamond & Cross
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+        <!-- Left Column: Interactive Graph Canvas & Playback Controls (7 cols) -->
+        <section class="lg:col-span-7 flex flex-col gap-4">
+
+            <!-- Step Narration Banner -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl flex items-start gap-3.5">
+                <div id="narration-badge" class="mt-0.5 w-7 h-7 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center justify-center shrink-0 font-mono text-xs font-bold">
+                    0
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-2 mb-1">
+                        <span id="step-phase" class="text-xs font-semibold uppercase tracking-wider text-rose-400">Initialization</span>
+                        <span id="step-counter" class="text-xs font-mono text-slate-400">Step 0 / 0</span>
+                    </div>
+                    <p id="narration-text" class="text-sm text-slate-200 leading-relaxed">
+                        Click <strong class="text-white">Play</strong> or <strong class="text-white">Step Forward</strong> to begin Depth-First Search. Click any node on the graph to set it as the Start Node.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Interactive SVG Graph Container -->
+            <div class="relative flex-1 min-h-[390px] sm:min-h-[460px] bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+                <!-- Top Legend & Hint -->
+                <div class="px-4 py-2.5 border-b border-slate-800/80 bg-slate-950/50 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div class="flex items-center gap-1.5 text-slate-400">
+                        <svg class="w-3.5 h-3.5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path>
+                        </svg>
+                        <span>Click any node to set <strong class="text-slate-200">Start Node</strong></span>
+                    </div>
+
+                    <!-- Node State Legend -->
+                    <div class="flex flex-wrap items-center gap-3 text-[11px] font-medium">
+                        <span class="flex items-center gap-1.5 text-slate-400">
+                            <span class="w-2.5 h-2.5 rounded-full bg-slate-700 border border-slate-500"></span> Unvisited
+                        </span>
+                        <span class="flex items-center gap-1.5 text-amber-300">
+                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500/30 border border-amber-400"></span> In Stack
+                        </span>
+                        <span class="flex items-center gap-1.5 text-rose-300">
+                            <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Active
+                        </span>
+                        <span class="flex items-center gap-1.5 text-purple-300">
+                            <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span> Backtrack
+                        </span>
+                        <span class="flex items-center gap-1.5 text-emerald-300">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span> Visited
+                        </span>
+                    </div>
+                </div>
+
+                <!-- SVG Canvas -->
+                <div class="relative flex-1 w-full h-full flex items-center justify-center bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:20px_20px]">
+                    <svg id="graph-svg" viewBox="0 0 760 440" class="w-full h-full max-h-[480px] select-none">
+                        <defs>
+                            <filter id="glow-rose" x="-30%" y="-30%" width="160%" height="160%">
+                                <feGaussianBlur stdDeviation="5" result="blur" />
+                                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                            </filter>
+                            <filter id="glow-purple" x="-30%" y="-30%" width="160%" height="160%">
+                                <feGaussianBlur stdDeviation="4" result="blur" />
+                                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                            </filter>
+                            <marker id="arrow-backtrack" viewBox="0 0 10 10" refX="26" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                <path d="M 0 1 L 10 5 L 0 9 z" fill="#c084fc" />
+                            </marker>
+                            <marker id="arrow-explore" viewBox="0 0 10 10" refX="26" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                <path d="M 0 1 L 10 5 L 0 9 z" fill="#fb7185" />
+                            </marker>
+                        </defs>
+                        <!-- Base Edges Layer -->
+                        <g id="edges-layer"></g>
+                        <!-- Active Branch Path Highlight Layer -->
+                        <g id="active-path-layer"></g>
+                        <!-- Backtrack / Directional Overlay Layer -->
+                        <g id="overlay-arrows-layer"></g>
+                        <!-- Nodes Layer -->
+                        <g id="nodes-layer"></g>
+                    </svg>
+                </div>
+
+                <!-- Playback Controls Bar -->
+                <div class="p-3.5 border-t border-slate-800 bg-slate-950/90 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-2">
+                        <button id="btn-reset" title="Reset (R)" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 transition-all active:scale-95">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                        </button>
+
+                        <button id="btn-prev" title="Step Backward (Left Arrow)" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 transition-all active:scale-95 disabled:opacity-40 disabled:pointer-events-none">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                            </svg>
+                        </button>
+
+                        <button id="btn-play" title="Play / Pause (Space)" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-purple-600 hover:from-rose-400 hover:to-purple-500 text-white font-semibold text-sm shadow-lg shadow-rose-500/25 flex items-center gap-2 transition-all active:scale-95">
+                            <svg id="icon-play" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                            <svg id="icon-pause" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                            </svg>
+                            <span id="play-label">Play</span>
+                        </button>
+
+                        <button id="btn-next" title="Step Forward (Right Arrow)" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 transition-all active:scale-95 disabled:opacity-40 disabled:pointer-events-none">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Speed Slider -->
+                    <div class="flex items-center gap-3">
+                        <label for="speed-slider" class="text-xs font-medium text-slate-400">Speed</label>
+                        <input id="speed-slider" type="range" min="1" max="5" value="3" class="w-24 sm:w-28 accent-rose-500 cursor-pointer">
+                        <span id="speed-label" class="text-xs font-mono text-rose-400 w-9">1.0x</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Live Data Structures & Synchronized Python Code (5 cols) -->
+        <section class="lg:col-span-5 flex flex-col gap-4">
+
+            <!-- LIFO Stack / Call Stack Card -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-rose-400"></span>
+                        <h2 id="stack-title" class="text-sm font-bold text-white tracking-wide">
+                            LIFO Stack <span class="text-slate-400 font-normal font-mono text-xs">(ArrayDeque)</span>
+                        </h2>
+                    </div>
+                    <span id="stack-size" class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">Depth: 0</span>
+                </div>
+
+                <div class="relative bg-slate-950/90 border border-slate-800/90 rounded-xl p-3 min-h-[78px] flex items-center gap-2 overflow-x-auto">
+                    <div class="flex flex-col items-center justify-center px-2 py-1 rounded bg-slate-800/70 border border-slate-700 text-[10px] font-mono text-slate-400 shrink-0">
+                        <span>BOTTOM</span>
+                        <span class="text-[9px] text-slate-500">Start</span>
+                    </div>
+
+                    <div id="stack-container" class="flex-1 flex items-center gap-2 min-h-[44px] px-1">
+                        <span class="text-xs font-mono text-slate-500 italic">Stack is empty</span>
+                    </div>
+
+                    <div class="flex flex-col items-center justify-center px-2 py-1 rounded bg-rose-500/10 border border-rose-500/30 text-[10px] font-mono text-rose-300 shrink-0">
+                        <span>TOP</span>
+                        <span id="stack-op-label" class="text-[9px] text-rose-400/80">push / pop</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visited Order & Active Depth Path Card -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Visited Order -->
+                <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col">
+                    <div class="flex items-center justify-between mb-2.5">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Visited Order</h3>
+                        <span id="visited-count" class="text-xs font-mono text-emerald-400">0 / 0</span>
+                    </div>
+                    <div id="visited-container" class="flex flex-wrap gap-1.5 min-h-[38px] items-center content-start">
+                        <span class="text-xs font-mono text-slate-500 italic">None yet</span>
+                    </div>
+                </div>
+
+                <!-- Current Active Exploration Path -->
+                <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col">
+                    <div class="flex items-center justify-between mb-2.5">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Active Branch</h3>
+                        <span id="branch-depth" class="text-[11px] font-mono text-rose-400">Depth: 0</span>
+                    </div>
+                    <div id="branch-container" class="flex flex-wrap items-center gap-1 min-h-[38px] text-xs font-mono">
+                        <span class="text-slate-500 italic">No active path</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Synchronized Java Code Panel -->
+            <div class="flex-1 bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-xl flex flex-col">
+                <div class="px-4 py-2.5 border-b border-slate-800 bg-slate-950/70 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="flex gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-rose-500/80"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500/80"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></span>
+                        </div>
+                        <span id="code-filename" class="ml-2 text-xs font-mono font-semibold text-slate-300">DFSIterative.java</span>
+                    </div>
+                    <span class="text-[11px] font-mono text-slate-400">Java Interview Template</span>
+                </div>
+
+                <div id="code-container" class="p-3 font-mono text-xs sm:text-[13px] leading-relaxed overflow-x-auto flex-1 bg-[#0b101b]">
+                    <!-- Code lines injected by JS -->
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Complexity & Interview Tip Footer -->
+    <footer class="border-t border-slate-800/80 bg-slate-950/90 px-4 sm:px-6 py-3.5 mt-auto">
+        <div class="max-w-[1600px] mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs">
+            <div class="flex flex-wrap items-center gap-2.5 font-mono">
+                <span class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300">
+                    Time: <strong class="text-rose-400">O(V + E)</strong>
+                </span>
+                <span class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300">
+                    Space: <strong class="text-purple-400">O(V)</strong> <span class="text-slate-500">(worst-case recursion/stack depth)</span>
+                </span>
+            </div>
+            <p class="text-slate-400 leading-relaxed">
+                <strong class="text-amber-300">Interview Tip:</strong> Use <strong class="text-slate-200">DFS</strong> for exhaustive pathfinding, cycle detection, topological sorting, and connected components. Unlike <strong class="text-cyan-400">BFS</strong>, DFS does <em>not</em> guarantee the shortest path in unweighted graphs.
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // ==========================================
+        // 1. GRAPH PRESETS & JAVA CODE TEMPLATES
+        // ==========================================
+        const PRESETS = {
+            tree: {
+                name: 'Branching Tree',
+                defaultStart: 'A',
+                nodes: [
+                    { id: 'A', x: 380, y: 55 },
+                    { id: 'B', x: 200, y: 145 },
+                    { id: 'C', x: 560, y: 145 },
+                    { id: 'D', x: 115, y: 250 },
+                    { id: 'E', x: 285, y: 250 },
+                    { id: 'F', x: 475, y: 250 },
+                    { id: 'G', x: 645, y: 250 },
+                    { id: 'H', x: 70,  y: 360 },
+                    { id: 'I', x: 160, y: 360 },
+                    { id: 'J', x: 245, y: 360 },
+                    { id: 'K', x: 600, y: 360 },
+                    { id: 'L', x: 690, y: 360 },
+                ],
+                edges: [
+                    ['A', 'B'], ['A', 'C'],
+                    ['B', 'D'], ['B', 'E'],
+                    ['C', 'F'], ['C', 'G'],
+                    ['D', 'H'], ['D', 'I'],
+                    ['E', 'J'],
+                    ['G', 'K'], ['G', 'L']
+                ]
+            },
+            cyclic: {
+                name: 'Cyclic Graph',
+                defaultStart: '1',
+                nodes: [
+                    { id: '1', x: 140, y: 220 },
+                    { id: '2', x: 285, y: 95 },
+                    { id: '3', x: 285, y: 345 },
+                    { id: '4', x: 455, y: 95 },
+                    { id: '5', x: 455, y: 345 },
+                    { id: '6', x: 620, y: 220 },
+                ],
+                edges: [
+                    ['1', '2'], ['1', '3'],
+                    ['2', '4'], ['2', '5'],
+                    ['3', '5'],
+                    ['4', '6'], ['4', '3'], // cross/back edge
+                    ['5', '6']
+                ]
+            },
+            maze: {
+                name: 'Maze / Grid Path',
+                defaultStart: '0,0',
+                nodes: [
+                    { id: '0,0', x: 160, y: 80 },  { id: '0,1', x: 305, y: 80 },  { id: '0,2', x: 450, y: 80 },  { id: '0,3', x: 595, y: 80 },
+                    { id: '1,0', x: 160, y: 175 }, /* wall at 1,1 */              { id: '1,2', x: 450, y: 175 }, { id: '1,3', x: 595, y: 175 },
+                    { id: '2,0', x: 160, y: 270 }, { id: '2,1', x: 305, y: 270 }, { id: '2,2', x: 450, y: 270 }, /* wall at 2,3 */
+                    { id: '3,0', x: 160, y: 365 }, { id: '3,1', x: 305, y: 365 }, { id: '3,2', x: 450, y: 365 }, { id: '3,3', x: 595, y: 365 },
+                ],
+                edges: [
+                    ['0,0', '0,1'], ['0,1', '0,2'], ['0,2', '0,3'],
+                    ['0,0', '1,0'], ['0,2', '1,2'], ['0,3', '1,3'],
+                    ['1,0', '2,0'], ['1,2', '2,2'],
+                    ['2,0', '2,1'], ['2,1', '2,2'],
+                    ['2,0', '3,0'], ['2,1', '3,1'], ['2,2', '3,2'],
+                    ['3,0', '3,1'], ['3,1', '3,2'], ['3,2', '3,3']
+                ]
+            },
+            diamond: {
+                name: 'Diamond & Cross',
+                defaultStart: 'S',
+                nodes: [
+                    { id: 'S', x: 120, y: 220 },
+                    { id: 'A', x: 270, y: 100 },
+                    { id: 'B', x: 270, y: 340 },
+                    { id: 'M', x: 410, y: 220 },
+                    { id: 'C', x: 540, y: 100 },
+                    { id: 'D', x: 540, y: 340 },
+                    { id: 'E', x: 665, y: 220 },
+                ],
+                edges: [
+                    ['S', 'A'], ['S', 'B'],
+                    ['A', 'M'], ['A', 'C'],
+                    ['B', 'M'], ['B', 'D'],
+                    ['M', 'C'], ['M', 'D'],
+                    ['C', 'E'], ['D', 'E']
+                ]
+            }
+        };
+
+        const JAVA_ITERATIVE = [
+            { line: 1,  text: "public List<String> dfsIterative(Map<String, List<String>> graph, String start) {" },
+            { line: 2,  text: "    Deque<String> stack = new ArrayDeque<>();" },
+            { line: 3,  text: "    Set<String> visited = new HashSet<>();" },
+            { line: 4,  text: "    List<String> order = new ArrayList<>();" },
+            { line: 5,  text: "    stack.push(start);" },
+            { line: 6,  text: "" },
+            { line: 7,  text: "    while (!stack.isEmpty()) {" },
+            { line: 8,  text: "        String curr = stack.pop();" },
+            { line: 9,  text: "        if (!visited.add(curr)) continue;" },
+            { line: 10, text: "        order.add(curr);" },
+            { line: 11, text: "" },
+            { line: 12, text: "        List<String> neighbors = graph.get(curr);" },
+            { line: 13, text: "        for (int i = neighbors.size() - 1; i >= 0; i--) {" },
+            { line: 14, text: "            String next = neighbors.get(i);" },
+            { line: 15, text: "            if (!visited.contains(next)) {" },
+            { line: 16, text: "                stack.push(next);" },
+            { line: 17, text: "            }" },
+            { line: 18, text: "        }" },
+            { line: 19, text: "    }" },
+            { line: 20, text: "    return order;" },
+            { line: 21, text: "}" }
+        ];
+
+        const JAVA_RECURSIVE = [
+            { line: 1,  text: "public List<String> dfsRecursive(Map<String, List<String>> graph, String start) {" },
+            { line: 2,  text: "    Set<String> visited = new HashSet<>();" },
+            { line: 3,  text: "    List<String> order = new ArrayList<>();" },
+            { line: 4,  text: "    dfs(start, graph, visited, order);" },
+            { line: 5,  text: "    return order;" },
+            { line: 6,  text: "}" },
+            { line: 7,  text: "" },
+            { line: 8,  text: "private void dfs(String curr, Map<String, List<String>> graph," },
+            { line: 9,  text: "                 Set<String> visited, List<String> order) {" },
+            { line: 10, text: "    visited.add(curr);" },
+            { line: 11, text: "    order.add(curr);" },
+            { line: 12, text: "" },
+            { line: 13, text: "    for (String neighbor : graph.get(curr)) {" },
+            { line: 14, text: "        if (!visited.contains(neighbor)) {" },
+            { line: 15, text: "            dfs(neighbor, graph, visited, order);" },
+            { line: 16, text: "        }" },
+            { line: 17, text: "    }" },
+            { line: 18, text: "    // Dead end / all neighbors explored -> backtrack" },
+            { line: 19, text: "}" }
+        ];
+
+        // ==========================================
+        // 2. APPLICATION STATE
+        // ==========================================
+        let currentMode = 'iterative'; // 'iterative' | 'recursive'
+        let currentPresetKey = 'tree';
+        let startNode = PRESETS.tree.defaultStart;
+        let steps = [];
+        let currentStepIdx = 0;
+        let isPlaying = false;
+        let playTimer = null;
+        let speedMultiplier = 1.0;
+
+        // ==========================================
+        // 3. DFS STEP GENERATORS (ITERATIVE & RECURSIVE)
+        // ==========================================
+        function buildAdjacencyList(preset) {
+            const adj = {};
+            preset.nodes.forEach(n => adj[n.id] = []);
+            preset.edges.forEach(([u, v]) => {
+                adj[u].push(v);
+                adj[v].push(u);
+            });
+            return adj;
+        }
+
+        function generateIterativeDFSSteps(presetKey, start) {
+            const preset = PRESETS[presetKey];
+            const adj = buildAdjacencyList(preset);
+            const trace = [];
+
+            let stack = [];
+            let visitedSet = new Set();
+            let visitedOrder = [];
+            let treeEdges = new Set();
+            let parentMap = { [start]: null };
+
+            const getActivePath = (node) => {
+                if (!node) return [];
+                const path = [];
+                let curr = node;
+                const guard = new Set();
+                while (curr !== null && curr !== undefined && !guard.has(curr)) {
+                    guard.add(curr);
+                    path.unshift(curr);
+                    curr = parentMap[curr];
+                }
+                return path;
+            };
+
+            const snapshot = (overrides) => ({
+                stack: [...stack],
+                stackSet: new Set(stack),
+                visited: [...visitedOrder],
+                visitedSet: new Set(visitedSet),
+                treeEdges: new Set(treeEdges),
+                currentNode: null,
+                activePath: [],
+                inspectingEdge: null,
+                inspectingNeighbor: null,
+                edgeAction: null, // 'explore' | 'backtrack' | 'skip'
+                arrowFrom: null,
+                arrowTo: null,
+                activeLine: 1,
+                phase: 'Ready',
+                narration: '',
+                ...overrides
+            });
+
+            // Step 0: Ready
+            trace.push(snapshot({
+                activeLine: 1,
+                phase: 'Ready',
+                narration: `Ready for <strong>Iterative DFS</strong> from node <strong>${start}</strong> using an explicit LIFO stack.`
+            }));
+
+            // Step 1: Push start
+            stack.push(start);
+            trace.push(snapshot({
+                activeLine: 5,
+                phase: 'Initialize Stack',
+                narration: `Call <code>stack.push("${start}")</code> to seed the <code>ArrayDeque</code> LIFO stack.`
+            }));
+
+            while (stack.length > 0) {
+                const curr = stack.pop();
+                const path = getActivePath(curr);
+
+                if (visitedSet.has(curr)) {
+                    trace.push(snapshot({
+                        currentNode: curr,
+                        activePath: path,
+                        activeLine: 9,
+                        phase: 'Skip Duplicate',
+                        narration: `Popped <strong>${curr}</strong> via <code>stack.pop()</code>, but <code>visited.add("${curr}")</code> returned <code>false</code>. Skip it.`
+                    }));
+                    continue;
+                }
+
+                visitedSet.add(curr);
+                visitedOrder.push(curr);
+
+                // Record discovery tree edge if parent exists
+                if (parentMap[curr] !== null && parentMap[curr] !== undefined) {
+                    const pEdge = [parentMap[curr], curr].sort().join('--');
+                    treeEdges.add(pEdge);
+                }
+
+                trace.push(snapshot({
+                    currentNode: curr,
+                    activePath: path,
+                    arrowFrom: parentMap[curr],
+                    arrowTo: curr,
+                    edgeAction: parentMap[curr] ? 'explore' : null,
+                    activeLine: 10,
+                    phase: 'Pop & Visit',
+                    narration: `Popped <strong>${curr}</strong> from top of stack, added to <code>visited</code> <code>HashSet</code>, and appended to <code>order</code> (#${visitedOrder.length}).`
+                }));
+
+                // Push neighbors in reverse order so left-most neighbor is popped first
+                const neighbors = [...(adj[curr] || [])].reverse();
+                let pushedAny = false;
+
+                for (const neighbor of neighbors) {
+                    const edgeKey = [curr, neighbor].sort().join('--');
+                    if (!visitedSet.has(neighbor)) {
+                        stack.push(neighbor);
+                        parentMap[neighbor] = curr;
+                        pushedAny = true;
+
+                        trace.push(snapshot({
+                            currentNode: curr,
+                            activePath: path,
+                            inspectingEdge: edgeKey,
+                            inspectingNeighbor: neighbor,
+                            edgeAction: 'explore',
+                            activeLine: 16,
+                            phase: 'Push Neighbor',
+                            narration: `<code>!visited.contains("${neighbor}")</code> is true — call <code>stack.push("${neighbor}")</code> so it is explored next.`
+                        }));
+                    } else if (neighbor !== parentMap[curr]) {
+                        trace.push(snapshot({
+                            currentNode: curr,
+                            activePath: path,
+                            inspectingEdge: edgeKey,
+                            inspectingNeighbor: neighbor,
+                            edgeAction: 'skip',
+                            activeLine: 15,
+                            phase: 'Already Visited',
+                            narration: `Neighbor <strong>${neighbor}</strong> is already in <code>visited</code> — ignore back/cross edge.`
+                        }));
+                    }
+                }
+
+                if (!pushedAny && stack.length > 0) {
+                    const nextTop = stack[stack.length - 1];
+                    trace.push(snapshot({
+                        currentNode: curr,
+                        activePath: path,
+                        arrowFrom: curr,
+                        arrowTo: nextTop,
+                        edgeAction: 'backtrack',
+                        activeLine: 7,
+                        phase: 'Dead End -> Backtrack',
+                        narration: `Dead end at <strong>${curr}</strong>! No unvisited neighbors left. Next iteration pops <strong>${nextTop}</strong> from stack.`
+                    }));
+                }
+            }
+
+            trace.push(snapshot({
+                activeLine: 20,
+                phase: 'Complete',
+                narration: `<code>stack.isEmpty()</code> is true! Iterative DFS complete. Visited <strong>${visitedOrder.length}</strong> nodes: <code>[${visitedOrder.join(' → ')}]</code>.`
+            }));
+
+            return trace;
+        }
+
+        function generateRecursiveDFSSteps(presetKey, start) {
+            const preset = PRESETS[presetKey];
+            const adj = buildAdjacencyList(preset);
+            const trace = [];
+
+            let callStack = [];
+            let visitedSet = new Set();
+            let visitedOrder = [];
+            let treeEdges = new Set();
+
+            const snapshot = (overrides) => ({
+                stack: [...callStack],
+                stackSet: new Set(callStack),
+                visited: [...visitedOrder],
+                visitedSet: new Set(visitedSet),
+                treeEdges: new Set(treeEdges),
+                currentNode: callStack.length > 0 ? callStack[callStack.length - 1] : null,
+                activePath: [...callStack],
+                inspectingEdge: null,
+                inspectingNeighbor: null,
+                edgeAction: null,
+                arrowFrom: null,
+                arrowTo: null,
+                activeLine: 1,
+                phase: 'Ready',
+                narration: '',
+                ...overrides
+            });
+
+            trace.push(snapshot({
+                activeLine: 4,
+                phase: 'Ready',
+                narration: `Ready for <strong>Recursive DFS</strong> invoking <code>dfs("${start}", graph, visited, order)</code>. The JVM call stack tracks active recursion frames.`
+            }));
+
+            function dfs(curr, parent) {
+                callStack.push(curr);
+                visitedSet.add(curr);
+                visitedOrder.push(curr);
+
+                if (parent !== null) {
+                    treeEdges.add([parent, curr].sort().join('--'));
+                }
+
+                trace.push(snapshot({
+                    arrowFrom: parent,
+                    arrowTo: curr,
+                    edgeAction: parent ? 'explore' : null,
+                    activeLine: 11,
+                    phase: 'Enter Frame & Visit',
+                    narration: `Entered <code>dfs("${curr}", ...)</code> (Depth ${callStack.length - 1}). Added <strong>${curr}</strong> to <code>visited</code> and <code>order</code>.`
+                }));
+
+                const neighbors = adj[curr] || [];
+                for (const neighbor of neighbors) {
+                    if (neighbor === parent) continue;
+                    const edgeKey = [curr, neighbor].sort().join('--');
+
+                    trace.push(snapshot({
+                        inspectingEdge: edgeKey,
+                        inspectingNeighbor: neighbor,
+                        activeLine: 13,
+                        phase: 'Check Neighbor',
+                        narration: `Iterating <code>graph.get("${curr}")</code>: inspecting neighbor <strong>${neighbor}</strong>.`
+                    }));
+
+                    if (!visitedSet.has(neighbor)) {
+                        trace.push(snapshot({
+                            inspectingEdge: edgeKey,
+                            inspectingNeighbor: neighbor,
+                            arrowFrom: curr,
+                            arrowTo: neighbor,
+                            edgeAction: 'explore',
+                            activeLine: 15,
+                            phase: 'Recurse Deeper',
+                            narration: `<code>!visited.contains("${neighbor}")</code> is true — recursing deeper via <code>dfs("${neighbor}", ...)</code>!`
+                        }));
+
+                        dfs(neighbor, curr);
+
+                        // Returned from recursion back to curr
+                        trace.push(snapshot({
+                            arrowFrom: neighbor,
+                            arrowTo: curr,
+                            edgeAction: 'backtrack',
+                            activeLine: 15,
+                            phase: 'Returned to Parent',
+                            narration: `Returned from <code>dfs("${neighbor}", ...)</code> back to stack frame <strong>${curr}</strong>.`
+                        }));
+                    } else {
+                        trace.push(snapshot({
+                            inspectingEdge: edgeKey,
+                            inspectingNeighbor: neighbor,
+                            edgeAction: 'skip',
+                            activeLine: 14,
+                            phase: 'Back-Edge Ignored',
+                            narration: `<code>visited.contains("${neighbor}")</code> is true — skip to avoid infinite recursion.`
+                        }));
+                    }
+                }
+
+                // Finish frame & backtrack
+                callStack.pop();
+                trace.push(snapshot({
+                    currentNode: callStack.length > 0 ? callStack[callStack.length - 1] : curr,
+                    arrowFrom: curr,
+                    arrowTo: parent,
+                    edgeAction: parent ? 'backtrack' : null,
+                    activeLine: 18,
+                    phase: parent ? 'Backtrack (Pop Frame)' : 'Root Finished',
+                    narration: parent
+                        ? `All neighbors of <strong>${curr}</strong> explored — returning from frame and backtracking to <strong>${parent}</strong>.`
+                        : `All branches from root <strong>${curr}</strong> have finished!`
+                }));
+            }
+
+            dfs(start, null);
+
+            trace.push(snapshot({
+                activeLine: 5,
+                phase: 'Complete',
+                narration: `JVM call stack unwound! Recursive DFS complete. Returned <code>order</code> with <strong>${visitedOrder.length}</strong> nodes: <code>[${visitedOrder.join(' → ')}]</code>.`
+            }));
+
+            return trace;
+        }
+
+        // ==========================================
+        // 4. DOM & SVG RENDERING FUNCTIONS
+        // ==========================================
+        function renderCodePanel() {
+            const codeLines = currentMode === 'iterative' ? JAVA_ITERATIVE : JAVA_RECURSIVE;
+            document.getElementById('code-filename').textContent =
+                currentMode === 'iterative' ? 'DFSIterative.java' : 'DFSRecursive.java';
+
+            const container = document.getElementById('code-container');
+            container.innerHTML = codeLines.map(item => `
+                <div id="code-line-${item.line}" class="code-line flex items-center px-2.5 py-0.5 rounded border-l-2 border-transparent">
+                    <span class="w-7 text-slate-600 select-none text-right pr-3 text-xs">${item.line}</span>
+                    <pre class="text-slate-300 whitespace-pre">${escapeHtml(item.text) || ' '}</pre>
+                </div>
+            `).join('');
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        function highlightCodeLine(lineNum) {
+            document.querySelectorAll('.code-line').forEach(el => {
+                el.classList.remove('bg-rose-500/15', 'border-rose-400');
+                el.querySelector('pre').classList.remove('text-rose-200', 'font-semibold');
+            });
+            const activeEl = document.getElementById(`code-line-${lineNum}`);
+            if (activeEl) {
+                activeEl.classList.add('bg-rose-500/15', 'border-rose-400');
+                activeEl.querySelector('pre').classList.add('text-rose-200', 'font-semibold');
+            }
+        }
+
+        function renderGraphSVG(step) {
+            const preset = PRESETS[currentPresetKey];
+            const nodeMap = {};
+            preset.nodes.forEach(n => nodeMap[n.id] = n);
+
+            // Build active path edge set
+            const activePathEdges = new Set();
+            for (let i = 0; i < step.activePath.length - 1; i++) {
+                activePathEdges.add([step.activePath[i], step.activePath[i + 1]].sort().join('--'));
+            }
+
+            // 1. Base Edges Layer
+            const edgesLayer = document.getElementById('edges-layer');
+            edgesLayer.innerHTML = preset.edges.map(([u, v]) => {
+                const n1 = nodeMap[u];
+                const n2 = nodeMap[v];
+                const edgeKey = [u, v].sort().join('--');
+
+                let stroke = '#334155';
+                let strokeWidth = 2.5;
+                let opacity = 0.7;
+                let dashArray = '';
+
+                if (step.inspectingEdge === edgeKey) {
+                    if (step.edgeAction === 'skip') {
+                        stroke = '#64748b';
+                        strokeWidth = 3;
+                        dashArray = '5 5';
+                        opacity = 0.9;
+                    } else {
+                        stroke = '#fb7185';
+                        strokeWidth = 4;
+                        opacity = 1;
+                    }
+                } else if (activePathEdges.has(edgeKey)) {
+                    stroke = '#f43f5e';
+                    strokeWidth = 4.5;
+                    opacity = 1;
+                } else if (step.treeEdges.has(edgeKey)) {
+                    stroke = '#10b981';
+                    strokeWidth = 3;
+                    opacity = 0.85;
+                }
+
+                return `
+                    <line x1="${n1.x}" y1="${n1.y}" x2="${n2.x}" y2="${n2.y}"
+                        class="edge-line"
+                        stroke="${stroke}"
+                        stroke-width="${strokeWidth}"
+                        stroke-dasharray="${dashArray}"
+                        opacity="${opacity}" />
+                `;
+            }).join('');
+
+            // 2. Overlay Directional / Backtrack Arrows Layer
+            const overlayLayer = document.getElementById('overlay-arrows-layer');
+            if (step.arrowFrom && step.arrowTo && nodeMap[step.arrowFrom] && nodeMap[step.arrowTo]) {
+                const from = nodeMap[step.arrowFrom];
+                const to = nodeMap[step.arrowTo];
+                const isBacktrack = step.edgeAction === 'backtrack';
+
+                overlayLayer.innerHTML = `
+                    <line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}"
+                        stroke="${isBacktrack ? '#c084fc' : '#fb7185'}"
+                        stroke-width="3.5"
+                        stroke-dasharray="${isBacktrack ? '6 4' : 'none'}"
+                        class="${isBacktrack ? 'animate-dash-flow' : ''}"
+                        marker-end="url(#${isBacktrack ? 'arrow-backtrack' : 'arrow-explore'})" />
+                `;
+            } else {
+                overlayLayer.innerHTML = '';
+            }
+
+            // 3. Nodes Layer
+            const nodesLayer = document.getElementById('nodes-layer');
+            const visitedIndexMap = {};
+            step.visited.forEach((id, idx) => visitedIndexMap[id] = idx + 1);
+
+            nodesLayer.innerHTML = preset.nodes.map(node => {
+                const isVisited = step.visitedSet.has(node.id);
+                const isInStack = step.stackSet.has(node.id);
+                const isCurrent = step.currentNode === node.id;
+                const isInspecting = step.inspectingNeighbor === node.id;
+                const isStart = node.id === startNode;
+                const isBacktrackTarget = step.edgeAction === 'backtrack' && step.arrowTo === node.id;
+
+                let fill = '#1e293b';
+                let stroke = '#475569';
+                let strokeWidth = 2.5;
+                let radius = 22;
+                let filter = '';
+                let pulseRing = '';
+
+                if (isVisited) {
+                    fill = '#065f46'; // Emerald dark
+                    stroke = '#34d399';
+                }
+
+                if (isInStack && !isCurrent) {
+                    if (!isVisited) fill = '#451a03';
+                    stroke = '#fbbf24'; // Amber outline for queued on stack
+                    strokeWidth = 3;
+                }
+
+                if (isBacktrackTarget) {
+                    fill = '#581c87';
+                    stroke = '#c084fc';
+                    strokeWidth = 3.5;
+                    filter = 'url(#glow-purple)';
+                }
+
+                if (isCurrent) {
+                    fill = '#be123c';
+                    stroke = '#fda4af';
+                    strokeWidth = 4;
+                    radius = 25;
+                    filter = 'url(#glow-rose)';
+                    pulseRing = `<circle cx="${node.x}" cy="${node.y}" r="28" fill="none" stroke="#fb7185" stroke-width="2" class="animate-pulse-ring" />`;
+                } else if (isInspecting && step.edgeAction !== 'skip') {
+                    stroke = '#38bdf8';
+                    strokeWidth = 3.5;
+                    radius = 24;
+                }
+
+                const orderBadge = visitedIndexMap[node.id] ? `
+                    <g transform="translate(${node.x + 15}, ${node.y - 16})">
+                        <rect x="-11" y="-9" width="22" height="16" rx="5" fill="#090d16" stroke="${stroke}" stroke-width="1.2" />
+                        <text x="0" y="2.5" text-anchor="middle" fill="#e2e8f0" font-size="9.5" font-family="JetBrains Mono" font-weight="700">
+                            #${visitedIndexMap[node.id]}
+                        </text>
+                    </g>
+                ` : '';
+
+                const startTag = isStart ? `
+                    <text x="${node.x}" y="${node.y + 37}" text-anchor="middle" fill="#fb7185" font-size="10" font-family="JetBrains Mono" font-weight="700">
+                        START
+                    </text>
+                ` : '';
+
+                return `
+                    <g class="cursor-pointer" onclick="handleNodeClick('${node.id}')">
+                        ${pulseRing}
+                        <circle cx="${node.x}" cy="${node.y}" r="${radius}"
+                            class="node-circle"
+                            fill="${fill}"
+                            stroke="${stroke}"
+                            stroke-width="${strokeWidth}"
+                            filter="${filter}" />
+                        <text x="${node.x}" y="${node.y + 4.5}"
+                            text-anchor="middle"
+                            fill="#ffffff"
+                            font-size="${node.id.length > 2 ? '11' : '13'}"
+                            font-family="JetBrains Mono"
+                            font-weight="700">
+                            ${node.id}
+                        </text>
+                        ${orderBadge}
+                        ${startTag}
+                    </g>
+                `;
+            }).join('');
+        }
+
+        function renderDataStructures(step) {
+            // 1. LIFO Stack / Call Stack
+            const stackTitle = document.getElementById('stack-title');
+            const stackOpLabel = document.getElementById('stack-op-label');
+            if (currentMode === 'iterative') {
+                stackTitle.innerHTML = `LIFO Stack <span class="text-slate-400 font-normal font-mono text-xs">(ArrayDeque&lt;String&gt;)</span>`;
+                stackOpLabel.textContent = 'push / pop';
+            } else {
+                stackTitle.innerHTML = `JVM Call Stack <span class="text-slate-400 font-normal font-mono text-xs">(Active frames)</span>`;
+                stackOpLabel.textContent = 'call / return';
+            }
+
+            const stackContainer = document.getElementById('stack-container');
+            const stackSize = document.getElementById('stack-size');
+            stackSize.textContent = `Size: ${step.stack.length}`;
+
+            if (step.stack.length === 0) {
+                stackContainer.innerHTML = `<span class="text-xs font-mono text-slate-500 italic">Stack is empty</span>`;
+            } else {
+                stackContainer.innerHTML = step.stack.map((nodeId, idx) => {
+                    const isTop = idx === step.stack.length - 1;
+                    const badgeStyle = isTop
+                        ? 'bg-rose-500/20 text-rose-200 border-rose-500/50 ring-2 ring-rose-400/60'
+                        : 'bg-amber-500/15 text-amber-200 border-amber-500/35';
+                    const subText = currentMode === 'recursive' ? `dfs("${nodeId}")` : `Frame ${idx}`;
+                    return `
+                        <div class="stack-item-enter relative flex flex-col items-center justify-center px-3 py-1.5 rounded-lg border ${badgeStyle} shrink-0">
+                            <span class="font-mono font-bold text-sm text-white">${nodeId}</span>
+                            <span class="text-[10px] font-mono opacity-80">${subText}</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // 2. Visited Order
+            const visitedContainer = document.getElementById('visited-container');
+            const visitedCount = document.getElementById('visited-count');
+            const totalNodes = PRESETS[currentPresetKey].nodes.length;
+            visitedCount.textContent = `${step.visited.length} / ${totalNodes}`;
+
+            if (step.visited.length === 0) {
+                visitedContainer.innerHTML = `<span class="text-xs font-mono text-slate-500 italic">None yet</span>`;
+            } else {
+                visitedContainer.innerHTML = step.visited.map(nodeId => `
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/35">
+                        ${nodeId}
+                    </span>
+                `).join('');
+            }
+
+            // 3. Active Branch Path
+            const branchContainer = document.getElementById('branch-container');
+            const branchDepth = document.getElementById('branch-depth');
+            const depthVal = Math.max(0, step.activePath.length - 1);
+            branchDepth.textContent = `Depth: ${depthVal}`;
+
+            if (step.activePath.length === 0) {
+                branchContainer.innerHTML = `<span class="text-slate-500 italic">No active path</span>`;
+            } else {
+                branchContainer.innerHTML = step.activePath.map((nodeId, idx) => {
+                    const isLast = idx === step.activePath.length - 1;
+                    const arrow = idx < step.activePath.length - 1
+                        ? `<span class="text-slate-600">→</span>`
+                        : '';
+                    return `
+                        <span class="px-1.5 py-0.5 rounded ${isLast ? 'bg-rose-500/25 text-rose-200 border border-rose-500/40 font-bold' : 'bg-slate-800 text-slate-300'}">
+                            ${nodeId}
+                        </span>
+                        ${arrow}
+                    `;
+                }).join('');
+            }
+        }
+
+        function updateUI() {
+            const step = steps[currentStepIdx];
+            if (!step) return;
+
+            document.getElementById('narration-badge').textContent = currentStepIdx;
+            document.getElementById('step-phase').textContent = step.phase;
+            document.getElementById('step-counter').textContent = `Step ${currentStepIdx} / ${steps.length - 1}`;
+            document.getElementById('narration-text').innerHTML = step.narration;
+
+            document.getElementById('btn-prev').disabled = currentStepIdx === 0;
+            document.getElementById('btn-next').disabled = currentStepIdx === steps.length - 1;
+
+            renderGraphSVG(step);
+            renderDataStructures(step);
+            highlightCodeLine(step.activeLine);
+        }
+
+        // ==========================================
+        // 5. PLAYBACK & INTERACTION HANDLERS
+        // ==========================================
+        function stopPlayback() {
+            isPlaying = false;
+            clearInterval(playTimer);
+            playTimer = null;
+            document.getElementById('icon-play').classList.remove('hidden');
+            document.getElementById('icon-pause').classList.add('hidden');
+            document.getElementById('play-label').textContent = 'Play';
+        }
+
+        function startPlayback() {
+            if (currentStepIdx >= steps.length - 1) {
+                currentStepIdx = 0;
+            }
+            isPlaying = true;
+            document.getElementById('icon-play').classList.add('hidden');
+            document.getElementById('icon-pause').classList.remove('hidden');
+            document.getElementById('play-label').textContent = 'Pause';
+
+            const intervalMs = Math.round(900 / speedMultiplier);
+            playTimer = setInterval(() => {
+                if (currentStepIdx < steps.length - 1) {
+                    currentStepIdx++;
+                    updateUI();
+                } else {
+                    stopPlayback();
+                }
+            }, intervalMs);
+        }
+
+        function togglePlay() {
+            isPlaying ? stopPlayback() : startPlayback();
+        }
+
+        function stepForward() {
+            stopPlayback();
+            if (currentStepIdx < steps.length - 1) {
+                currentStepIdx++;
+                updateUI();
+            }
+        }
+
+        function stepBackward() {
+            stopPlayback();
+            if (currentStepIdx > 0) {
+                currentStepIdx--;
+                updateUI();
+            }
+        }
+
+        function resetSimulation() {
+            stopPlayback();
+            renderCodePanel();
+            steps = currentMode === 'iterative'
+                ? generateIterativeDFSSteps(currentPresetKey, startNode)
+                : generateRecursiveDFSSteps(currentPresetKey, startNode);
+            currentStepIdx = 0;
+            updateUI();
+        }
+
+        window.handleNodeClick = function(nodeId) {
+            startNode = nodeId;
+            resetSimulation();
+        };
+
+        function selectMode(mode) {
+            currentMode = mode;
+            const iterBtn = document.getElementById('mode-iterative');
+            const recBtn = document.getElementById('mode-recursive');
+            if (mode === 'iterative') {
+                iterBtn.className = 'mode-btn px-3 py-1.5 text-xs font-semibold rounded-lg transition-all bg-rose-500/20 text-rose-300 border border-rose-500/40';
+                recBtn.className = 'mode-btn px-3 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-400 hover:text-slate-200 border border-transparent';
+            } else {
+                recBtn.className = 'mode-btn px-3 py-1.5 text-xs font-semibold rounded-lg transition-all bg-rose-500/20 text-rose-300 border border-rose-500/40';
+                iterBtn.className = 'mode-btn px-3 py-1.5 text-xs font-semibold rounded-lg transition-all text-slate-400 hover:text-slate-200 border border-transparent';
+            }
+            resetSimulation();
+        }
+
+        function selectPreset(presetKey) {
+            currentPresetKey = presetKey;
+            startNode = PRESETS[presetKey].defaultStart;
+
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                if (btn.dataset.preset === presetKey) {
+                    btn.className = 'preset-btn px-3 py-1.5 text-xs font-medium rounded-lg transition-all bg-purple-500/20 text-purple-300 border border-purple-500/40 whitespace-nowrap';
+                } else {
+                    btn.className = 'preset-btn px-3 py-1.5 text-xs font-medium rounded-lg transition-all text-slate-400 hover:text-slate-200 border border-transparent whitespace-nowrap';
+                }
+            });
+
+            resetSimulation();
+        }
+
+        // ==========================================
+        // 6. EVENT LISTENERS & INITIALIZATION
+        // ==========================================
+        document.getElementById('btn-play').addEventListener('click', togglePlay);
+        document.getElementById('btn-next').addEventListener('click', stepForward);
+        document.getElementById('btn-prev').addEventListener('click', stepBackward);
+        document.getElementById('btn-reset').addEventListener('click', resetSimulation);
+
+        document.getElementById('mode-iterative').addEventListener('click', () => selectMode('iterative'));
+        document.getElementById('mode-recursive').addEventListener('click', () => selectMode('recursive'));
+
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => selectPreset(btn.dataset.preset));
+        });
+
+        const speedSlider = document.getElementById('speed-slider');
+        const speedLabel = document.getElementById('speed-label');
+        const speedMap = { 1: 0.5, 2: 0.75, 3: 1.0, 4: 1.5, 5: 2.5 };
+
+        speedSlider.addEventListener('input', (e) => {
+            speedMultiplier = speedMap[e.target.value] || 1.0;
+            speedLabel.textContent = `${speedMultiplier.toFixed(1)}x`;
+            if (isPlaying) {
+                stopPlayback();
+                startPlayback();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                togglePlay();
+            } else if (e.code === 'ArrowRight') {
+                stepForward();
+            } else if (e.code === 'ArrowLeft') {
+                stepBackward();
+            } else if (e.code === 'KeyR') {
+                resetSimulation();
+            }
+        });
+
+        window.onload = function() {
+            resetSimulation();
+        };
+    </script>
+</body>
+</html>
